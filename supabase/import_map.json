@@ -1,6 +1,6 @@
 {
   "imports": {
-    "supabase": "./supabase",
-    "supabase/functions/": "./supabase/functions/"
+    "supabase/functions/": "./functions/",
+    "https://deno.land/x/": "https://deno.land/x/"
   }
 }
