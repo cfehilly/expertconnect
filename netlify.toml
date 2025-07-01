@@ -1,2 +1,12 @@
+[build]
+  command = "npm run build" # Or "yarn build" or "react-scripts build" - use whatever command builds your React app
+  publish = "build"         # Or "dist" - use whatever folder your build command creates (e.g., if it creates a 'build' folder)
+
 [functions]
   directory = "supabase/functions/"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
