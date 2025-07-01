@@ -146,20 +146,13 @@ export const dbHelpers = {
     return data;
   },
 
-  // NEW BULK IMPORT USERS - With debugging logs for JSON payload
+  // BULK IMPORT USERS - NOW USING DIRECT FETCH INSTEAD OF supabase.functions.invoke
   async bulkImportUsers(users: any[]) {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Please set up your database connection.');
     }
 
-    // --- START DEBUGGING LOGS ---
-    console.log('--- STARTING BULK IMPORT DEBUG ---');
-    console.log('1. Raw users data received by bulkImportUsers:', users);
-    console.log('2. Type of users data:', typeof users, 'Is array:', Array.isArray(users));
-    console.log('3. JSON payload *about* to be sent to Edge Function:', JSON.stringify({ users }));
-    console.log('--- ENDING BULK IMPORT DEBUG ---');
-    // --- END DEBUGGING LOGS ---
-
+    console.log('Starting bulk import via direct fetch to Edge Function.');
 
     try {
       // Get the current session to pass the auth token
@@ -169,33 +162,39 @@ export const dbHelpers = {
         throw new Error('No active session. Please log in again.');
       }
 
-      console.log('Calling import-users Edge Function...');
+      // --- CRITICAL CHANGE: Using direct fetch instead of supabase.functions.invoke ---
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/import-users`; // Construct the full URL
+      console.log('Calling Edge Function directly:', edgeFunctionUrl);
 
-      // Call the Edge Function for user import
-      const { data, error } = await supabase.functions.invoke('import-users', {
-        body: JSON.stringify({ users }),
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify({ users }), // Sending the JSON payload
       });
 
-      if (error) {
-        console.error('Edge function invocation error:', error);
-        throw new Error(error.message || 'Failed to import users via Edge Function');
+      // Handle response from the Edge Function
+      const responseData = await response.json(); // Edge Function always returns JSON
+
+      if (!response.ok) { // If status is not 2xx
+        console.error('Direct fetch Edge function error response:', responseData);
+        // Re-throw an error that the frontend can catch
+        throw new Error(responseData.error || 'Edge Function returned a non-2xx status code');
       }
 
-      console.log('Import results from Edge Function:', data);
+      console.log('Import results from Edge Function (direct fetch):', responseData);
 
       // Ensure we return a properly formatted result
       return {
-        successful: data.successful || 0,
-        failed: data.failed || 0,
-        errors: data.errors || []
+        successful: responseData.successful || 0,
+        failed: responseData.failed || 0,
+        errors: responseData.errors || []
       };
 
     } catch (error: any) {
-      console.error('Frontend bulk import caught error:', error); // Changed log message
+      console.error('Frontend bulk import (direct fetch) caught error:', error);
       throw new Error(error.message || 'Failed to import users');
     }
   }
