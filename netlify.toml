@@ -1,6 +1,2 @@
 [functions]
-directory = "netlify/functions"
-
-[functions."supabase/functions/*"]
-  node_bundler = "esbuild"
-  included_files = ["supabase/import_map.json"]
+  directory = "supabase/functions/"
