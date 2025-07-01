@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build"
-  publish = "dist"          
+  command = "npm run build" # This runs 'vite build' as per your package.json
+  publish = "dist"          # This tells Netlify to serve content from the 'dist' folder
 
 [functions]
   directory = "supabase/functions/"
