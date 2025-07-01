@@ -22,13 +22,13 @@ export const dbHelpers = {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Please set up your database connection.');
     }
-    
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -38,14 +38,14 @@ export const dbHelpers = {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Please set up your database connection.');
     }
-    
+
     const { data, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', userId)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -56,17 +56,17 @@ export const dbHelpers = {
       // Return empty array for demo purposes
       return [];
     }
-    
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('Database error:', error);
       throw error;
     }
-    
+
     console.log('Fetched users from database:', data);
     return data;
   },
@@ -77,7 +77,7 @@ export const dbHelpers = {
       // Return empty array for demo
       return [];
     }
-    
+
     const { data, error } = await supabase
       .from('help_requests')
       .select(`
@@ -86,7 +86,7 @@ export const dbHelpers = {
         expert:expert_id(name, email, avatar, department)
       `)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
     return data;
   },
@@ -96,13 +96,13 @@ export const dbHelpers = {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Please set up your database connection.');
     }
-    
+
     const { data, error } = await supabase
       .from('help_requests')
       .insert(request)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -112,10 +112,10 @@ export const dbHelpers = {
     if (!hasValidConfig) {
       return { total_users: 0, active_users: 0, experts: 0, management: 0, new_users_this_month: 0 };
     }
-    
+
     const { data, error } = await supabase
       .rpc('get_user_stats');
-    
+
     if (error) throw error;
     return data;
   },
@@ -125,10 +125,10 @@ export const dbHelpers = {
     if (!hasValidConfig) {
       return { total_requests: 0, open_requests: 0, completed_requests: 0, avg_completion_time: '0 minutes', requests_this_week: 0 };
     }
-    
+
     const { data, error } = await supabase
       .rpc('get_request_stats');
-    
+
     if (error) throw error;
     return data;
   },
@@ -138,26 +138,33 @@ export const dbHelpers = {
     if (!hasValidConfig) {
       return [];
     }
-    
+
     const { data, error } = await supabase
       .rpc('get_department_analytics');
-    
+
     if (error) throw error;
     return data;
   },
 
-  // NEW BULK IMPORT USERS - With the final fix
+  // NEW BULK IMPORT USERS - With debugging logs for JSON payload
   async bulkImportUsers(users: any[]) {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Please set up your database connection.');
     }
-    
-    console.log('Starting bulk import via Edge Function:', users);
-    
+
+    // --- START DEBUGGING LOGS ---
+    console.log('--- STARTING BULK IMPORT DEBUG ---');
+    console.log('1. Raw users data received by bulkImportUsers:', users);
+    console.log('2. Type of users data:', typeof users, 'Is array:', Array.isArray(users));
+    console.log('3. JSON payload *about* to be sent to Edge Function:', JSON.stringify({ users }));
+    console.log('--- ENDING BULK IMPORT DEBUG ---');
+    // --- END DEBUGGING LOGS ---
+
+
     try {
       // Get the current session to pass the auth token
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         throw new Error('No active session. Please log in again.');
       }
@@ -166,7 +173,6 @@ export const dbHelpers = {
 
       // Call the Edge Function for user import
       const { data, error } = await supabase.functions.invoke('import-users', {
-        // *** THE FIX IS HERE: Manually stringify the body ***
         body: JSON.stringify({ users }),
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -175,12 +181,12 @@ export const dbHelpers = {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('Edge function invocation error:', error);
         throw new Error(error.message || 'Failed to import users via Edge Function');
       }
 
       console.log('Import results from Edge Function:', data);
-      
+
       // Ensure we return a properly formatted result
       return {
         successful: data.successful || 0,
@@ -189,7 +195,7 @@ export const dbHelpers = {
       };
 
     } catch (error: any) {
-      console.error('Import error:', error);
+      console.error('Frontend bulk import caught error:', error); // Changed log message
       throw new Error(error.message || 'Failed to import users');
     }
   }
