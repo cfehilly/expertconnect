@@ -17,7 +17,12 @@ interface ImportUser {
 Deno.serve(async (req) => {
   console.log('Function started, method:', req.method);
   console.log('Headers:', Object.fromEntries(req.headers));
-
+  return new Response(JSON.stringify({ test: 'Function is running' }), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 200,
+  });
+  // The rest of the code is commented out for testing
+  /*
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -204,4 +209,5 @@ Deno.serve(async (req) => {
       }
     );
   }
+  */
 });
