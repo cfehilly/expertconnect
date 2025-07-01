@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build" # Or "yarn build" or "react-scripts build" - use whatever command builds your React app
-  publish = "build"         # Or "dist" - use whatever folder your build command creates (e.g., if it creates a 'build' folder)
+  command = "npm run build" # Or "yarn build" or "react-scripts build" - whatever builds your React app
+  publish = "dist"          # <--- CHANGE THIS LINE FROM "build" TO "dist"
 
 [functions]
   directory = "supabase/functions/"
