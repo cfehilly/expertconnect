@@ -1,4 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+Deno.serve(async (req) => {
+  console.log('Function started, method:', req.method);
+  console.log('Headers:', Object.fromEntries(req.headers));
+  // Rest of your code...
+  import { createClient } from '@supabase/supabase-js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
