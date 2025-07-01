@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+
 import { 
   Clock, 
   CheckCircle, 
@@ -10,16 +11,55 @@ import {
   Activity,
   ExternalLink
 } from 'lucide-react';
+
 import ConnectionModal from './ConnectionModal';
 import { useAuth } from '../hooks/useAuth';
 import { mockUsers } from '../data/mockData';
+
+// --- NEW IMPORT FOR NAVIGATION ---
+// Make sure you have react-router-dom installed in your project: npm install react-router-dom
+import { useNavigate } from 'react-router-dom';
+// --- END NEW IMPORT ---
+
+// --- User Type Definition (Ensures TypeScript understands the User structure) ---
+// If 'User' is already imported from '../types', you can remove this interface block.
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  department: string;
+  expertise?: string[];
+  status?: string;
+  rating?: number;
+  completedHelps?: number;
+  completed_helps?: number; // Added for robustness, as your code uses both
+}
+// --- END User Type Definition ---
+
 
 export default function Dashboard() {
   const { user: currentUser } = useAuth();
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState<any>(null);
 
+  // --- NEW NAVIGATION HOOK - Place this near the top of your component function, before 'if (!currentUser) return null;' ---
+  const navigate = useNavigate();
+  // --- END NEW NAVIGATION HOOK ---
+
   if (!currentUser) return null;
+
+  // Safely access user properties with fallbacks (your code already does this)
+  const safeCompletedHelps = currentUser.completedHelps || currentUser.completed_helps || 0;
+  const safeRating = currentUser.rating || 0;
+  const safeName = currentUser.name || 'User';
+
+  // --- NEW FUNCTION TO HANDLE NAVIGATION FOR STAT CARDS ---
+  const handleStatClick = (path: string) => {
+    navigate(path);
+  };
+  // --- END NEW FUNCTION ---
 
   const stats = [
     {
@@ -27,28 +67,32 @@ export default function Dashboard() {
       value: '3',
       icon: Clock,
       color: 'bg-blue-500',
-      change: '+2 from yesterday'
+      change: '+2 from yesterday',
+      path: '/requests' // <--- Added navigation path for the card
     },
     {
       label: 'Completed Helps',
-      value: (currentUser.completedHelps || 0).toString(),
+      value: safeCompletedHelps.toString(),
       icon: CheckCircle,
       color: 'bg-emerald-500',
-      change: '+5 this week'
+      change: '+5 this week',
+      path: '/history' // <--- Added navigation path (assuming this leads to completed help history)
     },
     {
       label: 'Expert Rating',
-      value: (currentUser.rating || 0).toFixed(1),
+      value: safeRating.toFixed(1),
       icon: Award,
       color: 'bg-orange-500',
-      change: '+0.2 this month'
+      change: '+0.2 this month',
+      path: '/experts' // <--- Added navigation path (assuming this leads to experts list for rating context)
     },
     {
       label: 'Connections',
       value: '12',
       icon: Users,
       color: 'bg-purple-500',
-      change: '+3 new this week'
+      change: '+3 new this week',
+      path: '/connections' // <--- Added navigation path
     }
   ];
 
@@ -86,6 +130,15 @@ export default function Dashboard() {
     }
   };
 
+  // This function is for the button within each recent activity item that already works.
+  // It's here for clarity but wasn't part of the direct problem areas.
+  const handleConnect = (expert: User, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevents the outer div's onClick from firing
+    setSelectedExpert(expert);
+    setShowConnectionModal(true);
+  };
+
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -97,12 +150,16 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* --- MODIFIED: Stats Grid - Now Clickable --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div
+              key={index}
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer" // Added cursor-pointer for visual feedback
+              onClick={() => handleStatClick(stat.path)} // ADDED onClick HANDLER
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">{stat.label}</p>
@@ -117,6 +174,7 @@ export default function Dashboard() {
           );
         })}
       </div>
+      {/* --- END MODIFIED: Stats Grid --- */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
@@ -126,13 +184,19 @@ export default function Dashboard() {
               <Activity className="h-5 w-5 mr-2" />
               Recent Activity
             </h3>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            {/* --- MODIFIED: 'VIEW ALL' BUTTON FIX --- */}
+            <button 
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              onClick={() => navigate('/requests')} // ADDED onClick HANDLER (assuming this goes to your requests list page)
+            >
               View All
             </button>
+            {/* --- END MODIFIED: 'VIEW ALL' BUTTON FIX --- */}
           </div>
           <div className="space-y-4">
             {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer" // Added cursor-pointer
+                   onClick={() => handleQuickConnect(activity.expert)}>
                 <div className={`p-2 rounded-full ${activity.type === 'completed' ? 'bg-emerald-100' : 'bg-blue-100'}`}>
                   <MessageCircle className={`h-4 w-4 ${activity.type === 'completed' ? 'text-emerald-600' : 'text-blue-600'}`} />
                 </div>
@@ -143,7 +207,7 @@ export default function Dashboard() {
                 </div>
                 {activity.expert && (
                   <button
-                    onClick={() => handleQuickConnect(activity.expert)}
+                    onClick={(e) => handleConnect(activity.expert, e)} // This button already had onClick
                     className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
                     title="Quick connect"
                   >
@@ -162,6 +226,7 @@ export default function Dashboard() {
             Quick Actions
           </h3>
           <div className="space-y-3">
+            {/* Post a Help Request Button (already had some functionality, no change needed) */}
             <button className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-blue-50 to-emerald-50 rounded-lg border border-blue-200 hover:from-blue-100 hover:to-emerald-100 transition-all">
               <div className="bg-blue-500 p-2 rounded-lg">
                 <MessageCircle className="h-5 w-5 text-white" />
@@ -171,8 +236,12 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600">Get expert help quickly</p>
               </div>
             </button>
-            
-            <button className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 hover:from-emerald-100 hover:to-blue-100 transition-all">
+
+            {/* Browse Experts Button (already fixed in previous round) */}
+            <button
+              className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 hover:from-emerald-100 hover:to-blue-100 transition-all"
+              onClick={() => navigate('/experts')}
+            >
               <div className="bg-emerald-500 p-2 rounded-lg">
                 <Users className="h-5 w-5 text-white" />
               </div>
@@ -182,7 +251,8 @@ export default function Dashboard() {
               </div>
             </button>
 
-            <button 
+            {/* Connect with Management Button (already had onClick) */}
+            <button
               onClick={() => handleQuickConnect(mockUsers.find(u => u.role === 'management'))}
               className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-orange-50 to-purple-50 rounded-lg border border-orange-200 hover:from-orange-100 hover:to-purple-100 transition-all"
             >
