@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // React and useState are already here, good.
+// Assuming you also have useEffect if needed for other parts of your dashboard.
+// import { useEffect } from 'react'; 
+
 import { 
   Clock, 
   CheckCircle, 
@@ -9,15 +12,43 @@ import {
   Calendar,
   Activity,
   ExternalLink
-} from 'lucide-react';
+} from 'lucide-react'; // Your icon imports are here, good.
+
 import ConnectionModal from '../components/ConnectionModal';
 import { useAuth } from '../hooks/useAuth';
 import { mockUsers } from '../data/mockData';
+
+// --- NEW IMPORT FOR NAVIGATION ---
+// Make sure you have react-router-dom installed in your project: npm install react-router-dom
+import { useNavigate } from 'react-router-dom';
+// --- END NEW IMPORT ---
+
+// --- User Type Definition (Ensure this is available, if not global) ---
+// This is important for TypeScript. If 'User' is not imported from elsewhere, define it here.
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  department: string;
+  expertise?: string[];
+  status?: string;
+  rating?: number;
+  completedHelps?: number; // Keeping original for robustness
+  completed_helps?: number; // Keeping for robustness
+}
+// --- END User Type Definition ---
+
 
 export default function Dashboard() {
   const { user: currentUser } = useAuth();
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState<any>(null);
+
+  // --- NEW NAVIGATION HOOK - Place this near the top of your component function ---
+  const navigate = useNavigate();
+  // --- END NEW NAVIGATION HOOK ---
 
   if (!currentUser) return null;
 
@@ -167,6 +198,7 @@ export default function Dashboard() {
             Quick Actions
           </h3>
           <div className="space-y-3">
+            {/* Post a Help Request Button */}
             <button className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-blue-50 to-emerald-50 rounded-lg border border-blue-200 hover:from-blue-100 hover:to-emerald-100 transition-all">
               <div className="bg-blue-500 p-2 rounded-lg">
                 <MessageCircle className="h-5 w-5 text-white" />
@@ -176,8 +208,12 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600">Get expert help quickly</p>
               </div>
             </button>
-            
-            <button className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 hover:from-emerald-100 hover:to-blue-100 transition-all">
+
+            {/* --- THIS IS THE 'BROWSE EXPERTS' BUTTON FIX --- */}
+            <button
+              className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 hover:from-emerald-100 hover:to-blue-100 transition-all"
+              onClick={() => navigate('/experts')} // <--- ADDED onClick HANDLER
+            >
               <div className="bg-emerald-500 p-2 rounded-lg">
                 <Users className="h-5 w-5 text-white" />
               </div>
@@ -186,8 +222,9 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600">Find the right person to help</p>
               </div>
             </button>
+            {/* --- END 'BROWSE EXPERTS' BUTTON FIX --- */}
 
-            <button 
+            <button
               onClick={() => handleQuickConnect(mockUsers.find(u => u.role === 'management'))}
               className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-orange-50 to-purple-50 rounded-lg border border-orange-200 hover:from-orange-100 hover:to-purple-100 transition-all"
             >
