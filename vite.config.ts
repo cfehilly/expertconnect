@@ -7,4 +7,8 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  base: '/',
+  // --- ADD THIS LINE ---
+  root: './', // This tells Vite to look for index.html in the project root (where public is)
+  // --- END ADDITION ---
 });
