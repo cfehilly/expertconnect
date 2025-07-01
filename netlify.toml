@@ -1,0 +1,2 @@
+[functions]
+  deno_import_map = "supabase/import_map.json"
