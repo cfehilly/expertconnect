@@ -1,4 +1,4 @@
-# Supabase Setup Guide for ExpertConnect
+# Supabase Setup Guide for PeerIQ
 
 ## Step 1: Create Supabase Project
 
@@ -6,7 +6,7 @@
 2. Click "New Project"
 3. Choose your organization
 4. Enter project details:
-   - **Name**: ExpertConnect
+   - **Name**: PeerIQ
    - **Database Password**: Generate a strong password (save this!)
    - **Region**: Choose closest to your users
 5. Click "Create new project"
@@ -165,4 +165,4 @@ If you encounter issues:
 3. Test with Supabase's built-in SQL editor
 4. Check the browser console for errors
 
-Your ExpertConnect platform is now ready for production use!
+Your PeerIQ platform is now ready for production use!

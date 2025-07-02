@@ -1,4 +1,4 @@
-# ExpertConnect - Internal Peer-to-Peer Expert Connection Platform
+# PeerIQ- Internal Peer-to-Peer Expert Connection Platform
 
 A production-ready platform for connecting employees with internal experts and management for help, guidance, and knowledge sharing.
 
@@ -90,7 +90,7 @@ npm run lint
 1. **Clone and install dependencies**
 ```bash
 git clone <repository-url>
-cd expertconnect
+cd PeerIQ
 npm install
 ```
 

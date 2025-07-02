@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -12,13 +12,14 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        currentUser={user} 
-        onNotificationClick={() => console.log('Notifications')}
+      <Header
+        currentUser={user}
+        // The 'onNotificationClick' prop has been removed here.
+        // It is no longer needed because the Header component now manages the notification dropdown state internally.
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
       />
       <div className="flex">
-        <Sidebar 
+        <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

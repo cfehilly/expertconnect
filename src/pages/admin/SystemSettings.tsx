@@ -15,7 +15,7 @@ import {
 export default function SystemSettings() {
   const [settings, setSettings] = useState({
     // General Settings
-    siteName: 'ExpertConnect',
+    siteName: 'PeerIQ',
     siteDescription: 'Internal peer-to-peer expert connection platform',
     allowRegistration: false,
     requireEmailVerification: true,

@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
@@ -6,12 +5,15 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import HelpRequests from './pages/HelpRequests';
-import ExpertsList from './pages/ExpertsList';
+import ExpertsList from './pages/ExpertsList'; // Corrected ExpertsList import
 import CreateRequest from './pages/CreateRequest';
 import Connections from './pages/Connections';
 import History from './pages/History';
 import Achievements from './pages/Achievements';
 import Settings from './pages/Settings';
+import Notifications from './pages/Notifications';
+import NotificationDetail from './pages/NotificationDetail';
+import RequestDetail from './pages/RequestDetail'; // NEW IMPORT FOR REQUEST DETAIL PAGE
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -46,11 +48,11 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} 
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
-      
+
       <Route path="/" element={
         <ProtectedRoute>
           <DashboardLayout />
@@ -59,12 +61,15 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="requests" element={<HelpRequests />} />
+        <Route path="requests/:id" element={<RequestDetail />} /> {/* NEW DYNAMIC ROUTE FOR REQUEST DETAILS */}
         <Route path="experts" element={<ExpertsList />} />
         <Route path="create" element={<CreateRequest />} />
         <Route path="connections" element={<Connections />} />
         <Route path="history" element={<History />} />
         <Route path="achievements" element={<Achievements />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="notifications" element={<Notifications />} />
+        <Route path="notifications/:id" element={<NotificationDetail />} />
       </Route>
 
       <Route path="/admin" element={

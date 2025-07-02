@@ -7,8 +7,22 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  base: '/',
-  // --- ADD THIS LINE ---
-  root: './', // This tells Vite to look for index.html in the project root (where public is)
-  // --- END ADDITION ---
+  base: '/', // Ensure this is set for correct asset paths
+  build: {
+    outDir: 'dist', // Ensure output directory is 'dist'
+    // --- NEW ADDITIONS FOR BUILD CONFIG ---
+    copyPublicDir: true, // Explicitly copy public directory contents
+    rollupOptions: {
+      input: {
+        main: 'index.html' // Explicitly set index.html as the main entry point
+      },
+      output: {
+        // Ensure entry files get a hash for cache busting
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
+    // --- END NEW ADDITIONS ---
+  },
 });
