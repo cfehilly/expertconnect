@@ -13,7 +13,8 @@ import Achievements from './pages/Achievements';
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 import NotificationDetail from './pages/NotificationDetail';
-import RequestDetail from './pages/RequestDetail'; // NEW IMPORT FOR REQUEST DETAIL PAGE
+import RequestDetail from './pages/RequestDetail';
+import Forum from './pages/Forum'; // ADD THIS IMPORT FOR THE FORUM PAGE
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -61,7 +62,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="requests" element={<HelpRequests />} />
-        <Route path="requests/:id" element={<RequestDetail />} /> {/* NEW DYNAMIC ROUTE FOR REQUEST DETAILS */}
+        <Route path="requests/:id" element={<RequestDetail />} />
         <Route path="experts" element={<ExpertsList />} />
         <Route path="create" element={<CreateRequest />} />
         <Route path="connections" element={<Connections />} />
@@ -70,6 +71,7 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="notifications/:id" element={<NotificationDetail />} />
+        <Route path="forum" element={<Forum />} /> {/* THIS IS THE ROUTE FOR THE FORUM PAGE */}
       </Route>
 
       <Route path="/admin" element={

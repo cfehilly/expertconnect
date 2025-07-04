@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-// These variables should come from your .env.local file
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://spnsfmunfyknyzyombuy.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwbnNmbXVuZnlrbnl6eW9tYnV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzMTgwNzksImV4cCI6MjA2Njg5NDA3OX0.lx6oms-Yfb4esOk7hSmxfvRss2kVMv8kZK3aU2AtwcE';
+// IMPORTANT: These variables should come from your .env.local file
+// If these are not in .env.local, the app will use hardcoded fallbacks below.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://spnsfmunfyknyzyombuy.supabase.co'; // Fallback to hardcoded URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwbnNmbXVuZnlrbnl6eW9tYnV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzMTgwNzksImV4cCI6MjA2Njg5NDA3OX0.lx6oms-Yfb4esOk7hSmxfvRss2kVMv8kZK3aU2AtwcE'; // Fallback to hardcoded key
 
 const hasValidConfig = supabaseUrl.includes('supabase.co') && supabaseAnonKey.length > 50;
 
@@ -42,7 +43,7 @@ export const dbHelpers = {
     const { count, error } = await supabase
       .from('connections')
       .select('id', { count: 'exact' })
-      .or(`requester_id.eq.${userId},expert_id.eq.${userId}`);
+      .or(`requester_id.eq.${userId},expert_id.eq.${userId}`); // Updated column names
     if (error) {
       console.error('Error fetching connections count:', error);
       throw error;
@@ -76,7 +77,7 @@ export const dbHelpers = {
   async getNewRequestsCountYesterday(userId: string) {
     if (!hasValidConfig) return 0;
     const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24); // TYPO FIX: Corrected 'twentyFourFourHoursAgo' to 'twentyFourHoursAgo'
     const twentyFourHoursAgoISO = twentyFourHoursAgo.toISOString();
 
     const { count, error } = await supabase
@@ -113,7 +114,6 @@ export const dbHelpers = {
     return 0; // Placeholder
   },
 
-  // Your other existing dbHelpers functions (copied from your previous response):
   async getUserProfile(userId: string) {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Please set up your database connection.');
@@ -253,13 +253,12 @@ export const dbHelpers = {
     }
   },
 
-  // --- NEW: Function to update request status ---
   async updateRequestStatus(requestId: string, newStatus: string) {
     if (!hasValidConfig) {
       throw new Error('Supabase not configured. Cannot update request status.');
     }
     const { data, error } = await supabase
-      .from('help_requests') // Assuming requests are in 'help_requests' table
+      .from('help_requests')
       .update({ status: newStatus })
       .eq('id', requestId)
       .select()
@@ -271,7 +270,30 @@ export const dbHelpers = {
     }
     return data;
   },
-  // --- END NEW ---
+
+  async assignExpertToRequest(requestId: string, expertId: string) {
+    if (!hasValidConfig) {
+      throw new Error('Supabase not configured. Cannot assign expert.');
+    }
+    const { data, error } = await supabase
+      .from('help_requests')
+      .update({ expert_id: expertId, status: 'in-progress' }) // Changed from 'pending' to 'in-progress'
+      .eq('id', requestId)
+      .eq('status', 'open') // Ensure it's still 'open' when assigned
+      .is('expert_id', null) // Ensure no expert is already assigned
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`Error assigning expert ${expertId} to request ${requestId}:`, error);
+      // More descriptive error if 0 rows were updated (e.g., already assigned, not open)
+      if (error.code === 'PGRST116' && error.details === 'The record could not be found.') { // This code indicates no row matched
+         throw new Error('Request already assigned or not in "open" status.');
+      }
+      throw error;
+    }
+    return data;
+  },
 };
 
 export { hasValidConfig };

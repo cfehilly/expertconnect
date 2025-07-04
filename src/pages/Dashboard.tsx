@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-// Forced change: 20250702161000 // Unique identifier to force bundle refresh.
+// Forced change: 20250703085000 // Unique identifier to force bundle refresh.
 import { useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -11,10 +11,11 @@ import {
   Calendar,
   Activity,
   ExternalLink,
-  Crown, // New icon for badges (example)
-  Zap, // New icon for badges (example)
-  Target // New icon for badges (example)
-} from 'lucide-react'; // Import new icons as needed
+  Crown,
+  Zap,
+  Target,
+  MessageSquareText // NEW ICON: For the Forum button
+} from 'lucide-react';
 import ConnectionModal from '../components/ConnectionModal';
 import { useAuth } from '../hooks/useAuth';
 import { mockUsers } from '../data/mockData';
@@ -33,7 +34,6 @@ export default function Dashboard() {
   const [newConnectionsThisWeekCount, setNewConnectionsThisWeekCount] = useState(0);
   const [expertRatingChangeThisMonth, setExpertRatingChangeThisMonth] = useState(0);
 
-  // NEW STATE for placeholder badges
   const [userBadges, setUserBadges] = useState([
     { id: 'mentor', name: 'Top Mentor', icon: Crown, color: 'text-yellow-600', description: 'Completed 10+ help requests' },
     { id: 'responder', name: 'Quick Responder', icon: Zap, color: 'text-blue-600', description: 'Responded quickly to 5 requests' },
@@ -48,7 +48,7 @@ export default function Dashboard() {
   if (!currentUser) return null;
 
   const safeCompletedHelps = currentUser.completedHelps || currentUser.completed_helps || 0;
-  const safeRating = currentUser.rating || 0; // Still exists in user object but won't be displayed as score
+  const safeRating = currentUser.rating || 0;
   const safeName = currentUser.name || 'User';
 
   useEffect(() => {
@@ -82,10 +82,6 @@ export default function Dashboard() {
         const fetchedExpertRatingChange = await dbHelpers.getExpertRatingChangeThisMonth(userId);
         setExpertRatingChangeThisMonth(fetchedExpertRatingChange);
 
-        // TODO: In a real app, you would also fetch the user's earned badges from the database here.
-        // For example: const fetchedBadges = await dbHelpers.getUserBadges(userId);
-        // setUserBadges(fetchedBadges);
-
       } catch (error: any) {
         console.error('Error fetching dashboard data:', error.message);
         setErrorDashboardData(`Failed to load dashboard data: ${error.message}`);
@@ -102,7 +98,6 @@ export default function Dashboard() {
     navigate(path);
   };
 
-  // Re-define stats to handle the new Expert Rating card layout
   const stats = [
     {
       label: 'Active Requests',
@@ -120,17 +115,13 @@ export default function Dashboard() {
       change: `+${completedHelpsThisWeekCount} this week`,
       path: '/history'
     },
-    // The Expert Rating card will be replaced with the Badges section below the grid.
-    // We will keep a placeholder in 'stats' to ensure the grid structure remains,
-    // but its content will be empty or a dummy.
-    // For now, it will use the old icon, but the main content will be replaced outside the map.
     {
-        label: 'Expert Rating', // This label will be visually overridden
-        value: safeRating.toFixed(1), // This value will be visually overridden
-        icon: Award, // This icon will be visually overridden
-        color: 'bg-orange-500',
-        change: '', // No simple numeric change for badges
-        path: '/achievements' // Navigates to achievements page
+      label: 'Expert Rating',
+      value: safeRating.toFixed(1),
+      icon: Award,
+      color: 'bg-orange-500',
+      change: `${expertRatingChangeThisMonth >= 0 ? '+' : ''}${expertRatingChangeThisMonth.toFixed(1)} this month`,
+      path: '/experts'
     },
     {
       label: 'Connections',
@@ -202,7 +193,7 @@ export default function Dashboard() {
 
       {!loadingDashboardData && !errorDashboardData && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.slice(0, 2).map((stat, index) => { // Render first two stats (Active Requests, Completed Helps)
+          {stats.slice(0, 2).map((stat, index) => {
             const Icon = stat.icon;
             return (
               <div
@@ -224,18 +215,18 @@ export default function Dashboard() {
             );
           })}
 
-          {/* NEW: Expert Badges Card (replaces old Expert Rating card visually) */}
+          {/* Expert Badges Card */}
           <div
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => navigate('/achievements')} // Assuming you have an Achievements page
+            onClick={() => navigate('/achievements')}
           >
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-medium text-gray-600">Badges Earned</p>
-              <Award className="h-6 w-6 text-orange-500" /> {/* Central icon for Badges */}
+              <Award className="h-6 w-6 text-orange-500" />
             </div>
             {userBadges.length > 0 ? (
               <div className="flex flex-wrap gap-2 mb-2">
-                {userBadges.slice(0, 3).map((badge) => { // Show max 3 badges
+                {userBadges.slice(0, 3).map((badge) => {
                   const BadgeIcon = badge.icon;
                   return (
                     <div key={badge.id} title={badge.description} className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${badge.color} bg-opacity-10`} style={{backgroundColor: `${badge.color.replace('text-', '').replace('-600', '100').replace('-500', '100')}`}}>
@@ -251,7 +242,7 @@ export default function Dashboard() {
             <p className="text-xs text-blue-600 mt-4 hover:underline">View all achievements</p>
           </div>
 
-          {stats.slice(3, 4).map((stat, index) => { // Render last stat (Connections)
+          {stats.slice(3, 4).map((stat, index) => {
             const Icon = stat.icon;
             return (
               <div
@@ -348,6 +339,20 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600">Find the right person to help</p>
               </div>
             </button>
+
+            {/* NEW: Community Forum button */}
+            <button
+              onClick={() => navigate('/forum')}
+              className="w-full flex items-center space-x-3 p-4 text-left bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200 hover:from-purple-100 hover:to-pink-100 transition-all">
+              <div className="bg-purple-500 p-2 rounded-lg">
+                <MessageSquareText className="h-5 w-5 text-white" /> {/* Using MessageSquareText from Lucide */}
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Community Forum</p>
+                <p className="text-sm text-gray-600">Discuss and get answers from the community</p>
+              </div>
+            </button>
+
 
             <button
               onClick={() => handleQuickConnect(mockUsers.find(u => u.role === 'management'))}
