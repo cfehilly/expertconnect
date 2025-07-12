@@ -5,7 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import HelpRequests from './pages/HelpRequests';
-import ExpertsList from './pages/ExpertsList'; // Corrected ExpertsList import
+import ExpertsList from './pages/ExpertsList';
 import CreateRequest from './pages/CreateRequest';
 import Connections from './pages/Connections';
 import History from './pages/History';
@@ -14,13 +14,16 @@ import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 import NotificationDetail from './pages/NotificationDetail';
 import RequestDetail from './pages/RequestDetail';
-import Forum from './pages/Forum'; // ADD THIS IMPORT FOR THE FORUM PAGE
+import Forum from './pages/Forum';
+import TopicDetails from './pages/TopicDetails';
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import Analytics from './pages/admin/Analytics';
 import SystemSettings from './pages/admin/SystemSettings';
 import LoadingSpinner from './components/LoadingSpinner';
+// --- NEW IMPORT: SearchPage ---
+import SearchPage from './pages/SearchPage';
 
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
   const { user, loading } = useAuth();
@@ -71,7 +74,10 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="notifications/:id" element={<NotificationDetail />} />
-        <Route path="forum" element={<Forum />} /> {/* THIS IS THE ROUTE FOR THE FORUM PAGE */}
+        <Route path="forum" element={<Forum />} />
+        <Route path="forum/topic/:id" element={<TopicDetails />} />
+        {/* --- NEW ROUTE: Search Page --- */}
+        <Route path="search" element={<SearchPage />} />
       </Route>
 
       <Route path="/admin" element={

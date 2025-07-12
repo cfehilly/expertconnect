@@ -28,6 +28,7 @@
     "@types/phoenix": "^1.6.6",
     "@types/prop-types": "^15.7.15",
     "@types/ws": "^8.18.1",
+    "framer-motion": "^12.23.3",
     "lucide-react": "^0.344.0",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",

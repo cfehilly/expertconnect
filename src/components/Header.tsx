@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from 'react'; // Removed React from direct import
-// Forced change: 20250702100800 // This line is for debugging / forcing a new bundle hash. Update if needed with current time.
+import { useState, useRef, useEffect } from 'react';
 import { Users, Bell, Search, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { User } from '../types'; // Correct import for User type
@@ -14,7 +13,10 @@ export default function Header({ currentUser, onMenuClick }: HeaderProps) {
   const { signOut } = useAuth();
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate(); // Initialize navigate hook
+  const navigate = useNavigate();
+
+  // --- NEW: State for search input ---
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Ensure currentUser has default values
   const safeUser = {
@@ -33,21 +35,21 @@ export default function Header({ currentUser, onMenuClick }: HeaderProps) {
   // Function to toggle dropdown visibility
   const handleBellClick = () => {
     setShowNotificationsDropdown(prev => !prev);
-    console.log('Bell clicked! Dropdown state toggled.'); // Diagnostic log
+    console.log('Bell clicked! Dropdown state toggled.');
   };
 
   // Function for individual notification click
   const handleNotificationItemClick = (notificationId: number) => {
-    console.log('Notification item clicked:', notificationId); // Diagnostic log
-    navigate(`/notifications/${notificationId}`); // NOW UNCOMMENTED: Will navigate to a detail page
-    setShowNotificationsDropdown(false); // Close dropdown after clicking an item
+    console.log('Notification item clicked:', notificationId);
+    navigate(`/notifications/${notificationId}`);
+    setShowNotificationsDropdown(false);
   };
 
   // Function for "View All Notifications" button click
   const handleViewAllNotificationsClick = () => {
-    console.log('View All Notifications clicked.'); // Diagnostic log
-    navigate('/notifications'); // Will navigate to the main notifications list page
-    setShowNotificationsDropdown(false); // Close dropdown
+    console.log('View All Notifications clicked.');
+    navigate('/notifications');
+    setShowNotificationsDropdown(false);
   };
 
   // Effect to handle clicks outside the dropdown to close it
@@ -63,6 +65,18 @@ export default function Header({ currentUser, onMenuClick }: HeaderProps) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // --- NEW: Handle search submission ---
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLButtonElement>) => {
+    if ('key' in e && e.key !== 'Enter') {
+      return; // Only proceed if Enter key is pressed or it's a button click
+    }
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery(''); // Clear search bar after submission
+    }
+  };
+  // --- END NEW ---
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 lg:pl-64">
@@ -84,15 +98,27 @@ export default function Header({ currentUser, onMenuClick }: HeaderProps) {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* --- MODIFIED: Search Input Field --- */}
             <div className="relative hidden md:block">
-              <Search className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search experts or requests..."
                 className="pl-10 pr-4 py-2 w-80 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchSubmit} // Listen for Enter key press
               />
+              {/* Optional: Add a search button/icon that also triggers submit */}
+              <button
+                onClick={handleSearchSubmit}
+                className="absolute right-0 top-1/2 transform -translate-y-1/2 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-r-lg"
+                aria-label="Submit search"
+              >
+                <Search className="h-5 w-5" />
+              </button>
             </div>
-            
+            {/* --- END MODIFIED --- */}
+
             {/* Notification Bell with Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
