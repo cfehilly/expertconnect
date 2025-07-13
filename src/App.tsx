@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
@@ -22,8 +23,8 @@ import UserManagement from './pages/admin/UserManagement';
 import Analytics from './pages/admin/Analytics';
 import SystemSettings from './pages/admin/SystemSettings';
 import LoadingSpinner from './components/LoadingSpinner';
-// --- NEW IMPORT: SearchPage ---
 import SearchPage from './pages/SearchPage';
+import UserProfile from './pages/UserProfile'; // NEW IMPORT: UserProfile component
 
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
   const { user, loading } = useAuth();
@@ -76,8 +77,8 @@ function AppRoutes() {
         <Route path="notifications/:id" element={<NotificationDetail />} />
         <Route path="forum" element={<Forum />} />
         <Route path="forum/topic/:id" element={<TopicDetails />} />
-        {/* --- NEW ROUTE: Search Page --- */}
         <Route path="search" element={<SearchPage />} />
+        <Route path="profile" element={<UserProfile />} /> {/* NEW ROUTE: UserProfile */}
       </Route>
 
       <Route path="/admin" element={
@@ -101,7 +102,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900"> {/* Added dark mode bg */}
           <AppRoutes />
         </div>
       </Router>

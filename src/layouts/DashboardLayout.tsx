@@ -1,30 +1,35 @@
+// src/layouts/DashboardLayout.tsx
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/Sidebar'; // Ensure this path is correct
 import { useAuth } from '../hooks/useAuth';
 
 export default function DashboardLayout() {
-  const { user } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth(); // Get user from context, if needed for layout logic
+  const [sidebarOpen, setSidebarOpen] = useState(false); // State to control sidebar visibility
 
-  if (!user) return null;
+  // If user is not logged in, typically a ProtectedRoute higher up would handle this.
+  // Returning null here would just hide the layout if not authenticated.
+  if (!user) return null; 
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // Outer container for the entire dashboard layout
+    // CRITICAL FIX: Applied dark mode background and text colors here for global effect
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Header
-        currentUser={user}
-        // The 'onNotificationClick' prop has been removed here.
-        // It is no longer needed because the Header component now manages the notification dropdown state internally.
-        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        // Header no longer needs currentUser prop, it fetches its own data
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)} // Pass toggle function for mobile sidebar
       />
       <div className="flex">
         <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          isOpen={sidebarOpen} // Pass isOpen prop
+          onClose={() => setSidebarOpen(false)} // Pass onClose prop
         />
-        <main className="flex-1 min-h-screen lg:ml-64">
-          <Outlet />
+        {/* Main content area */}
+        {/* CRITICAL FIX: Added padding and dark mode background/text to main content area */}
+        <main className="flex-1 min-h-screen lg:ml-64 p-6 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+          <Outlet /> {/* Renders nested routes (e.g., Dashboard, Profile, Forum) */}
         </main>
       </div>
     </div>

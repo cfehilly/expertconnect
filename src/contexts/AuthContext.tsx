@@ -1,38 +1,39 @@
+// src/contexts/AuthContext.ts
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, dbHelpers, hasValidConfig } from '../lib/supabase';
-import { User } from '../types';
+import { User as SupabaseAuthUser } from '@supabase/supabase-js'; 
 
 interface AuthContextType {
-  user: User | null;
+  user: SupabaseAuthUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithSSO: (provider: 'google' | 'microsoft') => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<User>) => Promise<void>;
+  updateProfile: (updates: Partial<{ name?: string; avatar_url?: string; department?: string; }>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseAuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // If Supabase is not configured, create a demo user immediately
       if (!hasValidConfig) {
         console.log('Demo mode: Creating demo user');
-        const demoUser: User = {
+        const demoUser: SupabaseAuthUser = {
           id: 'demo-user',
-          name: 'Demo Admin',
+          aud: 'authenticated',
+          role: 'authenticated',
           email: 'admin@demo.com',
-          avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=400',
-          role: 'admin',
-          department: 'Administration',
-          expertise: ['Platform Management', 'User Support'],
-          status: 'available',
-          rating: 5.0,
-          completedHelps: 25
+          email_confirmed_at: '2025-06-30T22:31:44.843Z',
+          last_sign_in_at: '2025-07-13T04:04:42.756Z',
+          // CRITICAL FIX: Removed 'phone: null' as it's not a top-level property of SupabaseAuthUser
+          created_at: '2025-06-30T22:31:27.385Z',
+          updated_at: '2025-07-13T04:04:42.760Z',
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: { name: 'Demo Admin', email: 'admin@demo.com', department: 'Administration' }
         };
         setUser(demoUser);
         setLoading(false);
@@ -40,22 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Get initial session
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
-        } else {
-          setLoading(false);
+          setUser(session.user);
         }
+        setLoading(false);
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log("Auth State Change:", event, session?.user?.id);
           if (session?.user) {
-            await fetchUserProfile(session.user.id);
+            setUser(session.user);
           } else {
             setUser(null);
-            setLoading(false);
           }
+          setLoading(false);
         });
 
         return () => subscription.unsubscribe();
@@ -68,27 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const profile = await dbHelpers.getUserProfile(userId);
-      setUser(profile);
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      // If profile doesn't exist, user might need to complete setup
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const signIn = async (email: string, password: string) => {
     if (!hasValidConfig) {
       throw new Error('Database not configured. This is a demo version.');
     }
     
+    setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    setLoading(false);
     if (error) throw error;
   };
 
@@ -97,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Database not configured. This is a demo version.');
     }
     
+    setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider === 'microsoft' ? 'azure' : provider,
       options: {
@@ -108,26 +98,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     if (!hasValidConfig) {
-      // For demo, just clear the user
       setUser(null);
       return;
     }
     
+    setLoading(true);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
 
-  const updateProfile = async (updates: Partial<User>) => {
-    if (!user) return;
-
-    if (!hasValidConfig) {
-      // For demo, just update local state
-      setUser({ ...user, ...updates });
-      return;
+  const updateProfile = async (updates: Partial<{ name?: string; avatar_url?: string; department?: string; }>) => {
+    // CRITICAL FIX: Handle demo mode update first
+    if (!hasValidConfig && user && user.id === 'demo-user') {
+      setUser(prevUser => {
+          if (prevUser) {
+              return {
+                  ...prevUser,
+                  user_metadata: { ...prevUser.user_metadata, ...updates }
+              };
+          }
+          return prevUser;
+      });
+      return; // Exit function after handling demo update
     }
 
-    const updatedUser = await dbHelpers.updateUserProfile(user.id, updates);
-    setUser(updatedUser);
+    // If no user (and not a demo user being updated)
+    if (!user) {
+      return; 
+    }
+
+    // If hasValidConfig is true (real Supabase) AND user is not demo
+    const { error } = await supabase.auth.updateUser({
+      data: updates
+    });
+    if (error) throw error;
   };
 
   const value = {
@@ -154,4 +158,4 @@ export function useAuth() {
   return context;
 }
 
-export { AuthContext }
+export { AuthContext };

@@ -1,41 +1,63 @@
+// src/pages/Forum.tsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Topic, UserProfile, NewTopicForm } from '../types/db';
-// The logo import line is still removed as we are setting that aside for now.
+import { Link } from 'react-router-dom';
+import { Topic, NewTopicForm } from '../types/db'; // Removed UserProfile as it's not used here
+
+// Assuming XchangeLogo is an actual component you use, otherwise remove this import
+// import XchangeLogo from '../components/XchangeLogo';
 
 const Forum = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [newTopic, setNewTopic] = useState<NewTopicForm>({ title: '', description: '', isEvent: false, startTime: '', endTime: '' });
-  const [userRole, setUserRole] = useState<'user' | 'admin'>('user');
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [newTopic, setNewTopic] = useState<NewTopicForm>({ title: '', description: '', is_event: false, start_time: null, end_time: null });
+  const [showNewTopicForm, setShowNewTopicForm] = useState(false);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  // Keeping currentUserId if you need just the ID for conditional rendering (e.g., login status)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchUserInfo();
-    fetchTopics();
+    const fetchTopics = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('topics')
+        .select('*')
+        .order('created_at', { ascending: false });
 
+      if (error) {
+        console.error('Error fetching topics:', error);
+        setError(error.message);
+      } else {
+        setTopics(data as Topic[]);
+      }
+      setLoading(false);
+    };
+
+    const fetchSessionAndUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setCurrentUserId(session.user.id);
+        // If you need the full UserProfile in Forum.tsx, you would fetch it here:
+        // const { data: userData, error: userError } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+        // if (userData) {
+        //   setCurrentUser(userData as UserProfile); // Ensure 'name' is present in userData
+        // }
+      } else {
+        setCurrentUserId(null);
+      }
+    };
+
+    fetchTopics();
+    fetchSessionAndUser();
+
+    // Set up a subscription for real-time updates on topics
     const topicSubscription = supabase
       .channel('public:topics')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'topics' },
-        (payload) => {
-          console.log('Realtime topic change received:', payload);
-          if (payload.eventType === 'INSERT') {
-            setTopics((prev) => [...prev, payload.new as Topic].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-          } else if (payload.eventType === 'UPDATE') {
-            setTopics((prev) =>
-              prev.map((t) => (t.id === (payload.old as Topic).id ? (payload.new as Topic) : t))
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setTopics((prev) => prev.filter((t) => t.id !== (payload.old as Topic).id));
-          }
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'topics' }, payload => {
+        console.log('Realtime topic change received:', payload);
+        fetchTopics(); // Re-fetch all topics on any change
+      })
       .subscribe();
 
     return () => {
@@ -43,199 +65,156 @@ const Forum = () => {
     };
   }, []);
 
-  const fetchUserInfo = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setCurrentUserId(user.id);
-      const { data: userData, error } = await supabase.from('users').select('*').eq('id', user.id).single();
-      if (error) {
-        console.error('Error fetching user data:', error);
-        setCurrentUser({ id: user.id, role: 'user' });
-      } else if (userData) {
-        setCurrentUser(userData as UserProfile);
-        setUserRole(userData.role as 'user' | 'admin');
-      }
-    } else {
-      setCurrentUserId(null);
-      setCurrentUser(null);
-      setUserRole('user');
-    }
-  };
-
-  const fetchTopics = async () => {
-    const { data, error } = await supabase.from('topics').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching topics:', error);
-      setLoading(false);
-    } else {
-      setTopics((data as Topic[]) || []);
-      setLoading(false);
-    }
-  };
-
-  const createTopic = async () => {
+  const handleCreateTopic = async () => {
     if (!currentUserId) {
       alert('You must be logged in to create a topic.');
       return;
     }
-    if (newTopic.isEvent && userRole !== 'admin') {
-      alert('Only admins can create events.');
+    if (!newTopic.title.trim() || !newTopic.description.trim()) {
+      alert('Title and description cannot be empty.');
       return;
     }
-    if (!newTopic.title.trim()) {
-        alert('Topic title cannot be empty.');
-        return;
-    }
 
-    const topicData: Omit<Topic, 'id' | 'created_at'> = {
+    // Renamed 'data' to '_data' to suppress unused variable warning
+    const { data: _data, error } = await supabase.from('topics').insert({
       title: newTopic.title,
       description: newTopic.description,
       creator_id: currentUserId,
-      pinned: false,
-      is_event: newTopic.isEvent,
-      start_time: null,
-      end_time: null,
-    };
+      pinned: false, // Default value
+      is_event: newTopic.is_event,
+      start_time: newTopic.is_event ? newTopic.start_time : null,
+      end_time: newTopic.is_event ? newTopic.end_time : null,
+    }).select(); // Use .select() to return the inserted data
 
-    if (newTopic.isEvent) {
-      if (newTopic.startTime) topicData.start_time = new Date(newTopic.startTime).toISOString();
-      if (newTopic.endTime) topicData.end_time = new Date(newTopic.endTime).toISOString();
-    }
-
-    const { error } = await supabase.from('topics').insert(topicData);
     if (error) {
       console.error('Error creating topic:', error);
       alert('Failed to create topic: ' + error.message);
     } else {
-      setNewTopic({ title: '', description: '', isEvent: false, startTime: '', endTime: '' });
-      setShowCreateForm(false);
+      setNewTopic({ title: '', description: '', is_event: false, start_time: null, end_time: null });
+      setShowNewTopicForm(false);
+      // Topics will be re-fetched by the subscription.
+      // If you want to optimistically update immediately, uncomment the line below:
+      // setTopics(prev => [_data[0] as Topic, ...prev]);
     }
   };
 
   if (loading) {
-    return <div className="text-center p-8 text-xl text-gray-600">Loading forum content...</div>;
+    return <div className="text-center p-8">Loading topics...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center p-8 text-red-600">Error: {error}</div>;
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto bg-gray-50 min-h-screen">
-      {/* --- LOGO INTEGRATION (TEXT H1 REMOVED) --- */}
-      <div className="flex flex-col items-center justify-center mb-8">
-        {/* If you place your logo in public folder, you can use: */}
-        {/* <img src="/xchange-logo.png" alt="Xchange Logo" className="h-24 w-auto mb-4 drop-shadow-md" /> */}
-        {/* The h1 'Xchange' text is now removed */}
-      </div>
-      {/* --- END LOGO INTEGRATION --- */}
+    <div className="p-6 max-w-4xl mx-auto bg-gray-100 min-h-screen shadow-lg rounded-lg dark:bg-gray-900 dark:text-gray-100">
+      <h1 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 text-center">Forum Topics</h1>
 
-      {/* List Topics Section - main focus */}
-      <h2 className="text-4xl font-extrabold text-blue-800 mb-8 text-center drop-shadow-sm">Latest Discussions</h2> {/* Enhanced heading style and color */}
-
-      {topics.length === 0 && !loading ? (
-        <p className="text-center text-gray-600 text-lg p-6 bg-white rounded-2xl shadow-md border border-gray-100">No topics yet. Be the first to create one!</p>
-      ) : (
-        <ul className="space-y-6">
-          {topics.map((topic) => (
-            <li key={topic.id} className="p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1 border border-gray-100">
-              <Link to={`/forum/topic/${topic.id}`} className="block">
-                <h3 className="text-2xl font-bold text-gray-800 mb-2 hover:text-blue-700 transition-colors duration-200 leading-tight">
-                  {topic.title}
-                  {topic.pinned && <span className="ml-3 px-3 py-1 bg-gradient-to-r from-green-300 to-green-500 text-green-800 text-sm font-medium rounded-full drop-shadow-sm">Pinned</span>} {/* Pinned tag color updated */}
-                  {topic.is_event && <span className="ml-3 px-3 py-1 bg-gradient-to-r from-purple-300 to-purple-500 text-purple-800 text-sm font-medium rounded-full drop-shadow-sm">Event</span>} {/* Event tag color updated */}
-                </h3>
-                <p className="text-gray-700 mb-4 line-clamp-3 leading-relaxed">{topic.description}</p> {/* Text color slightly darker */}
-                {topic.is_event && topic.start_time && topic.end_time && (
-                  <p className="text-gray-600 text-sm mt-2 font-medium">
-                    <span className="text-gray-800">Time:</span> {new Date(topic.start_time).toLocaleString()} to {new Date(topic.end_time).toLocaleString()}
-                  </p>
-                )}
-                <p className="text-gray-500 text-xs mt-3">
-                  Posted: {new Date(topic.created_at).toLocaleString()}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Create Topic Button - moved to the bottom after the list, with new gradient color */}
-      {!showCreateForm && (
-        <div className="text-center mt-12"> {/* Increased top margin for spacing */}
+      {/* Conditional "Create New Topic" button */}
+      {currentUserId && !showNewTopicForm && (
+        <div className="text-center mb-8">
           <button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3.5 px-10 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-teal-300"
+            onClick={() => setShowNewTopicForm(true)}
+            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300 dark:bg-green-700 dark:hover:bg-green-800 dark:focus:ring-green-600"
           >
             + Create New Topic
           </button>
         </div>
       )}
 
-      {/* Create Form - conditionally rendered, positioned after the button */}
-      {showCreateForm && (
-        <div className="mt-10 p-8 bg-white rounded-2xl shadow-xl border border-gray-100 animate-fade-in-down">
-          <h2 className="text-2xl font-bold text-gray-800 mb-5 border-b pb-3">Create New Topic</h2>
+      {/* New Topic Form */}
+      {showNewTopicForm && (
+        <div className="mb-8 p-6 bg-gray-50 rounded-xl shadow-inner border border-gray-200 animate-fade-in dark:bg-gray-700 dark:border-gray-600">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3">Create New Topic</h3>
           <input
             type="text"
-            placeholder="Topic Title (required)"
             value={newTopic.title}
             onChange={(e) => setNewTopic({ ...newTopic, title: e.target.value })}
-            className="border border-gray-300 p-3 mb-4 w-full rounded-lg focus:ring-teal-500 focus:border-teal-500 text-gray-800 placeholder-gray-400"
-            aria-label="Topic Title"
-            required
+            placeholder="Topic Title"
+            className="w-full p-3 border border-gray-300 rounded-md mb-3 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
           />
           <textarea
-            placeholder="Topic Description"
             value={newTopic.description}
             onChange={(e) => setNewTopic({ ...newTopic, description: e.target.value })}
-            rows={5}
-            className="border border-gray-300 p-3 mb-4 w-full rounded-lg resize-y focus:ring-teal-500 focus:border-teal-500 text-gray-800 placeholder-gray-400"
-            aria-label="Topic Description"
-          />
-          <label className="flex items-center mb-5 text-gray-700 cursor-pointer text-base">
+            placeholder="Topic Description"
+            rows={3}
+            className="w-full p-3 border border-gray-300 rounded-md mb-3 focus:ring-blue-500 focus:border-blue-500 resize-y bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+          ></textarea>
+          <div className="flex items-center mb-3">
             <input
               type="checkbox"
-              checked={newTopic.isEvent}
-              onChange={(e) => setNewTopic({ ...newTopic, isEvent: e.target.checked })}
-              className="mr-3 h-5 w-5 text-teal-600 rounded focus:ring-teal-500"
+              checked={newTopic.is_event}
+              onChange={(e) => setNewTopic({ ...newTopic, is_event: e.target.checked })}
+              id="is-event-checkbox"
+              className="mr-2 h-4 w-4 text-blue-600 rounded dark:bg-gray-500 dark:border-gray-400"
             />
-            Is this an Event? (Admin Only)
-          </label>
-
-          {newTopic.isEvent && (
-            <div className="flex flex-col md:flex-row gap-4 mb-5">
+            <label htmlFor="is-event-checkbox" className="text-gray-700 dark:text-gray-300">Is this an Event?</label>
+          </div>
+          {newTopic.is_event && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
               <input
                 type="datetime-local"
-                value={newTopic.startTime}
-                onChange={(e) => setNewTopic({ ...newTopic, startTime: e.target.value })}
-                className="border border-gray-300 p-3 flex-1 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-gray-800"
-                placeholder="Event Start Time"
-                aria-label="Event Start Time"
+                value={newTopic.start_time || ''} // Handle null
+                onChange={(e) => setNewTopic({ ...newTopic, start_time: e.target.value })}
+                className="p-3 border border-gray-300 rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
               />
               <input
                 type="datetime-local"
-                value={newTopic.endTime}
-                onChange={(e) => setNewTopic({ ...newTopic, endTime: e.target.value })}
-                className="border border-gray-300 p-3 flex-1 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-gray-800"
-                placeholder="Event End Time"
-                aria-label="Event End Time"
+                value={newTopic.end_time || ''} // Handle null
+                onChange={(e) => setNewTopic({ ...newTopic, end_time: e.target.value })}
+                className="p-3 border border-gray-300 rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
               />
             </div>
           )}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-3">
             <button
-              onClick={() => setShowCreateForm(false)}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2.5 px-6 rounded-lg transition duration-300 ease-in-out active:scale-95"
+              onClick={() => setShowNewTopicForm(false)}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out active:scale-95 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200"
             >
               Cancel
             </button>
             <button
-              onClick={createTopic}
-              className="bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-              disabled={!currentUserId || !newTopic.title.trim()}
+              onClick={handleCreateTopic}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-800"
+              disabled={!currentUserId || !newTopic.title.trim() || !newTopic.description.trim()}
             >
               Create Topic
             </button>
           </div>
         </div>
       )}
+
+      {/* Topics List */}
+      <div className="space-y-4">
+        {topics.length === 0 ? (
+          <p className="text-center text-gray-600 text-lg p-4 bg-white rounded-lg shadow-md dark:bg-gray-700 dark:text-gray-300">
+            No topics yet. Be the first to create one!
+          </p>
+        ) : (
+          topics.map((topic) => (
+            <div key={topic.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+              {/* Corrected Link path */}
+              <Link to={`/forum/topic/${topic.id}`} className="block">
+                <h2 className="text-xl font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-2">{topic.title}</h2>
+                <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">{topic.description}</p>
+              </Link>
+              {topic.is_event && (
+                <div className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full inline-block mb-2 dark:bg-blue-900 dark:text-blue-200">
+                  Event
+                  {topic.start_time && topic.end_time && (
+                    <span>
+                      {' '}Live: {new Date(topic.start_time).toLocaleDateString()} - {new Date(topic.end_time).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Created on {new Date(topic.created_at).toLocaleDateString()}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };
